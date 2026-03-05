@@ -4,7 +4,6 @@ pub mod linked_list {
     }
 
     // type Link = Option<Box<Node>>;
-
     struct Node {
         val: isize,
         next: Option<Box<Node>>, 
@@ -31,6 +30,17 @@ pub mod linked_list {
                 node.val
             })    
         }
+
     }
 
+    impl Drop for List {
+        fn drop(&mut self) {
+            let mut curr = self.head.take();
+             
+            while let Some(mut node) = curr {
+                curr = node.next.take();
+                // `node` is dropped here
+            }
+        }
+    }
 }
