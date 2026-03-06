@@ -13,7 +13,7 @@ mod tests {
 
         for val in 0..10 {
             head.push(val);
-            assert!(head.peek() == Some(val));
+            assert!(head.peek() == Some(&val));
         } 
 
         for i in 0..10 {
@@ -21,5 +21,17 @@ mod tests {
         }
 
         assert!(head.peek()== None);
+
+        for val in 0..10 {
+            head.push(val);
+        }
+        
+        {
+            let mut i = 9;
+            for val in head.into_iter() {
+                assert!(val == i);
+                i -= 1;
+            }
+        }
     }
 }
