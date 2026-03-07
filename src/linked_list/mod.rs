@@ -38,6 +38,10 @@ pub mod linked_list {
         pub fn iter<'a>(&'a self) -> Iter<'a, T> {
             Iter(self.head.as_deref())
         }
+
+        pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T> {
+            IterMut(self.head.as_deref_mut())
+        }
     }
 
     impl<T> Drop for List<T> {
@@ -73,6 +77,20 @@ pub mod linked_list {
             self.0.map(|node| { 
                 self.0 = node.next.as_deref(); 
                 &node.val
+            })
+        }
+    }
+
+    pub struct IterMut<'a, T>(Option<&'a mut Node<T>>);
+
+    impl<'a, T> Iterator for IterMut<'a, T> {
+        type Item = &'a mut T;
+        
+        fn next(&mut self) -> Option<Self::Item> {
+            self.0.take().map(|node| {  // consume the reference 
+                self.0 = node.next.as_deref_mut(); 
+                // return it
+                &mut node.val
             })
         }
     }
