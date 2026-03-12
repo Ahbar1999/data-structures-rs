@@ -1,6 +1,6 @@
 pub mod ll_deque_v1 {
     use std::rc::Rc;
-    use std::cell::RefCell;
+    use std::cell::{RefCell, Ref};
 
     type Link<T> = Option<Rc<RefCell<Node<T>>>>;
         
@@ -69,7 +69,7 @@ pub mod ll_deque_v1 {
         }
         
         // TODO:
-        // pop_back(), peek_back(), peek_front(), push_back() 
+        //push_back() 
         pub fn pop_back(&mut self)  -> Option<T> {
             self.tail.take().map(|old_tail| {
                 match old_tail.borrow_mut().prev.take() {
@@ -88,6 +88,31 @@ pub mod ll_deque_v1 {
                 Rc::try_unwrap(old_tail).ok().unwrap().into_inner().val 
             })
         }
+        
+        pub fn peek_front(&self) -> Option<Ref<T>> {
+            self.head.as_ref().map(|head_ref| {
+                Ref::map(head_ref.borrow(), |head_ref| { &head_ref.val }) 
+            })
+        }
+
+        pub fn peek_back(&self) -> Option<Ref<T>> {
+            self.tail.as_ref().map(|tail_ref| {
+                Ref::map(tail_ref.borrow(), |tail_ref| { &tail_ref.val }) 
+            })
+        }
+        
+        pub fn push_back(&mut self, val: T) {
+            let new_tail = Node::new(val);
+
+            if let Some(old_tail) = self.tail.take() {
+                old_tail.borrow_mut().next = Some(new_tail.clone());
+                new_tail.borrow_mut().prev = Some(old_tail);
+                self.tail = Some(new_tail);
+            } else {
+                self.head = Some(new_tail.clone());
+                self.tail = Some(new_tail);
+            }
+        }
     }
     
     // implement drop trait
@@ -103,7 +128,7 @@ pub mod ll_deque_v1 {
 #[cfg(test)]
 mod test {
     use crate::ll_deque_v1::ll_deque_v1::List;
-
+    
     #[test]
     fn basics() {
         let mut list = List::new();
@@ -129,7 +154,26 @@ mod test {
         assert_eq!(list.pop_front(), Some(4));
 
         // Check exhaustion
-        assert_eq!(list.pop_front(), Some(1));
+        assert_eq!(list.pop_back(), Some(1));
         assert_eq!(list.pop_front(), None);
+        
+        // check for pop_back()
+        list.push_back(1);
+        list.push_back(2);
+        assert_eq!(list.pop_front(), Some(1));
+        assert_eq!(list.pop_front(), Some(2));
+        assert_eq!(list.pop_back(), None);
+    }
+
+    #[test]
+    fn peek() {
+        let mut list = List::new();
+
+        list.push_front(3);
+        list.push_front(2);
+        list.push_front(1);
+
+        assert_eq!(*list.peek_front().unwrap(), 1);
+        assert_eq!(*list.peek_back().unwrap(), 3);
     }
 }
