@@ -19,7 +19,7 @@ pub mod ll_deque_v1 {
         // returns Rc<RefCell<Node<T>>>
         fn new(val: T) -> Rc<RefCell<Self>> {
             Rc::new(RefCell::new(Node {
-                val: val,
+                val,
                 prev: None,
                 next: None
             })
@@ -66,6 +66,27 @@ pub mod ll_deque_v1 {
                     
                 Rc::try_unwrap(old_head).ok().unwrap().into_inner().val
             }) 
+        }
+        
+        // TODO:
+        // pop_back(), peek_back(), peek_front(), push_back() 
+        pub fn pop_back(&mut self)  -> Option<T> {
+            self.tail.take().map(|old_tail| {
+                match old_tail.borrow_mut().prev.take() {
+                    Some(new_tail) => {
+                        self.tail = Some(new_tail);
+                    },
+                    None => {
+                        // tail == head; single element list
+                        // deinit head 
+                        self.head.take(); 
+                    }
+                } 
+
+                // just return tail value by taking inner value out of rc is there are no
+                // outsanding references to it
+                Rc::try_unwrap(old_tail).ok().unwrap().into_inner().val 
+            })
         }
     }
     
