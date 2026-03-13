@@ -1,6 +1,6 @@
 pub mod ll_deque_v1 {
     use std::rc::Rc;
-    use std::cell::{RefCell, Ref};
+    use std::cell::{RefCell, Ref, RefMut};
 
     type Link<T> = Option<Rc<RefCell<Node<T>>>>;
         
@@ -55,25 +55,28 @@ pub mod ll_deque_v1 {
 
         pub fn pop_front(&mut self) -> Option<T> {
             self.head.take().map(|old_head| {
-                if let Some(new_head) = old_head.borrow_mut().next.take() {
-                    new_head.borrow_mut().prev.take();   // deinitialize prev pointer 
-
-                    self.head = Some(new_head);
-                } else {
-                    // single node case; deinit tail pointer
-                    self.tail.take();
+                match old_head.borrow_mut().next.take() {
+                    Some(new_head) => {
+                        new_head.borrow_mut().prev.take(); // dinit; set prev of head to null; not
+                                                           // adding this line would make
+                                                           // Rc::try_unwrap() fail since there
+                                                           // would be outstanding references
+                        self.head = Some(new_head);
+                    },
+                    None => {
+                        self.tail.take();
+                    }
                 }
                     
                 Rc::try_unwrap(old_head).ok().unwrap().into_inner().val
             }) 
         }
         
-        // TODO:
-        //push_back() 
         pub fn pop_back(&mut self)  -> Option<T> {
             self.tail.take().map(|old_tail| {
                 match old_tail.borrow_mut().prev.take() {
                     Some(new_tail) => {
+                        new_tail.borrow_mut().next.take();
                         self.tail = Some(new_tail);
                     },
                     None => {
@@ -113,6 +116,20 @@ pub mod ll_deque_v1 {
                 self.tail = Some(new_tail);
             }
         }
+        
+        // TODO:
+        // peek_front_mut, peek_back_mut
+        pub fn peek_back_mut(&mut self) -> Option<RefMut<T>> {
+            self.tail.as_ref().map(|tail_ref| {
+                RefMut::map(tail_ref.borrow_mut(), |tail_ref: &mut Node<T>| {&mut tail_ref.val})
+            })
+        }
+
+        pub fn peek_front_mut(&mut self) -> Option<RefMut<T>> {
+            self.head.as_ref().map(|head_ref| {
+                RefMut::map(head_ref.borrow_mut(), |head_ref: &mut Node<T>| {&mut head_ref.val})
+            })
+        }
     }
     
     // implement drop trait
@@ -125,10 +142,11 @@ pub mod ll_deque_v1 {
     }
 }
 
+
 #[cfg(test)]
 mod test {
     use crate::ll_deque_v1::ll_deque_v1::List;
-    
+
     #[test]
     fn basics() {
         let mut list = List::new();
@@ -154,26 +172,64 @@ mod test {
         assert_eq!(list.pop_front(), Some(4));
 
         // Check exhaustion
-        assert_eq!(list.pop_back(), Some(1));
+        assert_eq!(list.pop_front(), Some(1));
         assert_eq!(list.pop_front(), None);
-        
-        // check for pop_back()
+
+        // ---- back -----
+
+        // Check empty list behaves right
+        assert_eq!(list.pop_back(), None);
+
+        // Populate list
         list.push_back(1);
         list.push_back(2);
-        assert_eq!(list.pop_front(), Some(1));
-        assert_eq!(list.pop_front(), Some(2));
+        list.push_back(3);
+
+        // Check normal removal
+        assert_eq!(list.pop_back(), Some(3));
+        assert_eq!(list.pop_back(), Some(2));
+
+        // Push some more just to make sure nothing's corrupted
+        list.push_back(4);
+        list.push_back(5);
+
+        // Check normal removal
+        assert_eq!(list.pop_back(), Some(5));
+        assert_eq!(list.pop_back(), Some(4));
+
+        // Check exhaustion
+        assert_eq!(list.pop_back(), Some(1));
         assert_eq!(list.pop_back(), None);
     }
-
+        
     #[test]
     fn peek() {
         let mut list = List::new();
+        assert!(list.peek_front().is_none());
+        assert!(list.peek_back().is_none());
+        assert!(list.peek_front_mut().is_none());
+        assert!(list.peek_back_mut().is_none());
 
-        list.push_front(3);
-        list.push_front(2);
-        list.push_front(1);
+        list.push_front(1); list.push_front(2); list.push_front(3);
 
-        assert_eq!(*list.peek_front().unwrap(), 1);
-        assert_eq!(*list.peek_back().unwrap(), 3);
+        assert_eq!(&*list.peek_front().unwrap(), &3);
+        assert_eq!(&mut *list.peek_front_mut().unwrap(), &mut 3);
+        assert_eq!(&*list.peek_back().unwrap(), &1);
+        assert_eq!(&mut *list.peek_back_mut().unwrap(), &mut 1);
     }
+        
+    /*
+    #[test]
+    fn into_iter() {
+        let mut list = List::new();
+        list.push_front(1); list.push_front(2); list.push_front(3);
+
+        let mut iter = list.into_iter();
+        assert_eq!(iter.next(), Some(3));
+        assert_eq!(iter.next_back(), Some(1));
+        assert_eq!(iter.next(), Some(2));
+        assert_eq!(iter.next_back(), None);
+        assert_eq!(iter.next(), None);
+    }
+    */
 }
