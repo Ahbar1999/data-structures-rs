@@ -130,8 +130,11 @@ pub mod ll_deque_v1 {
                 RefMut::map(head_ref.borrow_mut(), |head_ref: &mut Node<T>| {&mut head_ref.val})
             })
         }
+
+        pub fn into_iter(self) -> IntoIter<T> {
+            IntoIter(self)        
+        }
     }
-    
     // implement drop trait
     impl<T> Drop for List<T> {
         fn drop(&mut self) {
@@ -140,8 +143,32 @@ pub mod ll_deque_v1 {
             }
         }
     }
-}
+    
+    // owns the List Object
+    pub struct IntoIter<T>(List<T>);
+    impl<T> Iterator for IntoIter<T> {
+        type Item = T;
+        
+        fn next(&mut self) -> Option<Self::Item> {
+            self.0.pop_front().take().map(|node| { node }) 
+        }
+    }
+        
+    impl<T> DoubleEndedIterator for IntoIter<T> {
+        fn next_back(&mut self) -> Option<Self::Item> {
+            self.0.pop_back().take().map(|node| { node }) 
+        }
+    }
+        
+    pub struct Iter<'a, T>(Option<Ref<'a, Node<T>>>);
+    impl<'a, T> Iterator for Iter<'a, T> {
+        type Item = Ref<'a, T>;
 
+        fn next(&mut self) -> Option<Self::Item> {
+            todo!()
+        }
+    }
+}
 
 #[cfg(test)]
 mod test {
@@ -218,7 +245,6 @@ mod test {
         assert_eq!(&mut *list.peek_back_mut().unwrap(), &mut 1);
     }
         
-    /*
     #[test]
     fn into_iter() {
         let mut list = List::new();
@@ -231,5 +257,4 @@ mod test {
         assert_eq!(iter.next_back(), None);
         assert_eq!(iter.next(), None);
     }
-    */
 }
