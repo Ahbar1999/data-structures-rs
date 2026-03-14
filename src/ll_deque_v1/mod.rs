@@ -117,8 +117,6 @@ pub mod ll_deque_v1 {
             }
         }
         
-        // TODO:
-        // peek_front_mut, peek_back_mut
         pub fn peek_back_mut(&mut self) -> Option<RefMut<T>> {
             self.tail.as_ref().map(|tail_ref| {
                 RefMut::map(tail_ref.borrow_mut(), |tail_ref: &mut Node<T>| {&mut tail_ref.val})
@@ -134,7 +132,14 @@ pub mod ll_deque_v1 {
         pub fn into_iter(self) -> IntoIter<T> {
             IntoIter(self)        
         }
+        
+        /*
+        pub fn iter<'a>(&'a self) -> Iter<'a, T> {
+            Iter(self.head.as_ref().map(|node| { node.borrow() }))
+        }
+        */
     }
+
     // implement drop trait
     impl<T> Drop for List<T> {
         fn drop(&mut self) {
@@ -159,19 +164,31 @@ pub mod ll_deque_v1 {
             self.0.pop_back().take().map(|node| { node }) 
         }
     }
-        
+      
+    /* NOTES:
+     * this implementation doesnt work because the Ref<T> that we are trying to return is 
+     * tied with the Ref<> of Node that we are iterating over 
+     * */
+    /*  
     pub struct Iter<'a, T>(Option<Ref<'a, Node<T>>>);
     impl<'a, T> Iterator for Iter<'a, T> {
         type Item = Ref<'a, T>;
 
         fn next(&mut self) -> Option<Self::Item> {
-            todo!()
+            self.0.as_ref().map(|node_ref| {
+                // in the line below you are trying to create and keep a reference(next_node.borrow()) while dropping its parent
+                // reference(node_ref) at the end of scope
+                self.0 = node_ref.next.as_ref().map(|next_node| { next_node.borrow() } );
+                
+                Ref::map(node_ref, |node_ref: &'a Node<T> | { &node_ref.val })
+            })
         }
     }
+    */
 }
 
 #[cfg(test)]
-mod test {
+ mod test {
     use crate::ll_deque_v1::ll_deque_v1::List;
 
     #[test]
