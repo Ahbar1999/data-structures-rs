@@ -1,4 +1,4 @@
-pub mod ll_deque_v1 {
+pub mod dll_deque_v1 {
     use std::rc::Rc;
     use std::cell::{RefCell, Ref, RefMut};
 
@@ -189,7 +189,7 @@ pub mod ll_deque_v1 {
 
 #[cfg(test)]
  mod test {
-    use crate::ll_deque_v1::ll_deque_v1::List;
+    use crate::dll_deque_v1::dll_deque_v1::List;
 
     #[test]
     fn basics() {

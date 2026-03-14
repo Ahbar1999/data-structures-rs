@@ -1,6 +1,7 @@
 pub mod linked_list;
 pub mod linked_list_v2;
-pub mod ll_deque_v1;
+pub mod dll_deque_v1;
+pub mod ll_deque;
 
 #[cfg(test)]
 mod tests {
