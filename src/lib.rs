@@ -2,6 +2,7 @@ pub mod linked_list;
 pub mod linked_list_v2;
 pub mod dll_deque_v1;
 pub mod ll_deque;
+pub mod example_stacked_borrows;
 
 #[cfg(test)]
 mod tests {

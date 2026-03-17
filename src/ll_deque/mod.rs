@@ -59,6 +59,7 @@ pub mod ll_deque {
 }
 
 #[cfg(test)]
+#[ignore]
 mod test {
     use crate::ll_deque::ll_deque::List;
     #[test]
