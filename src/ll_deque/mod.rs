@@ -64,9 +64,24 @@ pub mod ll_deque {
                     Some(old_head.val)
                 }
             }
-
             // old_head dropped here
-        } 
+        }
+
+        pub fn iter<'a>(&'a self) -> Iter<'a, T> {
+            unsafe {
+                Iter(self.head.as_ref())
+            }
+        }
+
+        pub fn into_iter(self) -> IntoIter<T> {
+            IntoIter(self)
+        }
+
+        pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T> {
+            unsafe {
+                IterMut(self.head.as_mut())
+            }
+        }
     }
 
     impl<T> Drop for List<T> {
@@ -74,10 +89,72 @@ pub mod ll_deque {
             while let Some(_) = self.pop() { }
         }
     }
+
+    pub struct Iter<'a, T>(Option<&'a Node<T>>);   // stores a reference to the pointer to the Node
+    pub struct IntoIter<T>(List<T>);
+    
+    pub struct IterMut<'a, T>(Option<&'a mut Node<T>>); 
+    
+    impl<'a, T> Iterator for IterMut<'a, T> {
+        type Item = &'a mut T;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            unsafe {
+                self.0.take().map(|node_ref| {
+                    self.0 = node_ref.next.as_mut();
+                    &mut node_ref.val
+                })
+            }   
+        }
+    }
+
+
+    impl<'a, T> Iterator for Iter<'a, T> {
+        type Item = &'a T;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            unsafe {
+                /*
+                if self.0.is_null() {
+                    None
+                } else {
+                    let old_head = Some(&(*(*self.0)).val); 
+                    self.0 = &(*(*self.0)).next;  
+                    
+                    old_head  
+                }
+                */
+                self.0.map(|node_ptr| {
+                    self.0 = node_ptr.next.as_ref();
+                    &node_ptr.val 
+                })
+            }
+        } 
+    }
+
+    impl<T> Iterator for IntoIter<T> {
+        type Item = T;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            /*
+            unsafe {
+                if self.0.head.is_null() {
+                    None
+                } else {
+                    let old_head = Box::from_raw(self.0.head);
+                    self.0.head = (*old_head).next;
+
+                    Some((*old_head).val)
+                }
+            }
+            */
+            
+            self.0.pop() 
+       }
+    }
 }
 
 #[cfg(test)]
-#[ignore]
 mod test {
     use crate::ll_deque::ll_deque::List;
     #[test]
@@ -120,4 +197,38 @@ mod test {
         assert_eq!(list.pop(), Some(7));
         assert_eq!(list.pop(), None);
     }
+
+    #[test]
+    fn ref_iter() { 
+        let mut list = List::new();
+
+        list.push(1);
+        list.push(2);   
+        list.push(3);
+        list.push(4);
+        
+        let mut iter = list.iter();
+
+        assert_eq!(Some(&1), iter.next()); 
+        assert_eq!(Some(&2), iter.next());
+        assert_eq!(Some(&3), iter.next()); 
+        assert_eq!(Some(&4), iter.next());
+    }
+
+    #[test]
+    fn owning_iter() { 
+        let mut list = List::new();
+
+        list.push(1);
+        list.push(2);   
+        list.push(3);
+        list.push(4);
+        
+        let mut iter = list.into_iter();
+
+        assert_eq!(Some(1), iter.next()); 
+        assert_eq!(Some(2), iter.next());
+        assert_eq!(Some(3), iter.next()); 
+        assert_eq!(Some(4), iter.next());
+    } 
 }
