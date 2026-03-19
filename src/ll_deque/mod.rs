@@ -82,6 +82,26 @@ pub mod ll_deque {
                 IterMut(self.head.as_mut())
             }
         }
+
+        pub fn peek(&self) -> Option<&T> {
+            unsafe {
+                if self.head.is_null() {
+                    None
+                } else {
+                    Some(&(*self.head).val)
+                }
+            }
+        }
+
+        pub fn peek_mut(&mut self) -> Option<&mut T> {
+            unsafe {
+                if self.head.is_null() {
+                    None
+                } else {
+                    Some(&mut (*self.head).val)
+                }
+            }
+        }
     }
 
     impl<T> Drop for List<T> {
@@ -171,17 +191,25 @@ mod test {
                         // the list 
 
         list.push(3);
+        
+        // test peek
+        assert_eq!(list.peek(), Some(&1));
 
         // Check normal removal
         assert_eq!(list.pop(), Some(1));
         assert_eq!(list.pop(), Some(2));
 
+        assert_eq!(list.peek(), Some(&3));
+
         // Push some more just to make sure nothing's corrupted
         list.push(4);
         list.push(5);
+        
+        let mut_val = list.peek_mut().unwrap();
+        *mut_val = 31;
 
         // Check normal removal
-        assert_eq!(list.pop(), Some(3));
+        assert_eq!(list.pop(), Some(31));
         assert_eq!(list.pop(), Some(4));
 
         // Check exhaustion
