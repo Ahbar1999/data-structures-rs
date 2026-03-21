@@ -17,9 +17,9 @@ pub mod ll_deque_final {
     }
 
     pub struct List<T> {
-        pub front: Link<T>,
-        pub back: Link<T>,
-        pub len: usize,
+        front: Link<T>,
+        back: Link<T>,
+        len: usize,
         _dummy: PhantomData<T>  // List owns the data is points, it needs to tell compiler that so the lifetimes of the data can be bound finitely 
     }
 
@@ -31,6 +31,10 @@ pub mod ll_deque_final {
                 len: 0,
                 _dummy: PhantomData // 0 sized type 
             }
+        }
+        
+        pub fn len(&self) -> usize {
+            self.len
         }
 
         pub fn push_front(&mut self, val: T) {
@@ -70,34 +74,109 @@ pub mod ll_deque_final {
                     old_head.read().val
                 })
             }
-        } 
+        }
+    
+        pub fn front(&self) -> Option<&T> {
+            unsafe {
+                self.front.map(|nn_node_ptr|{
+                    &((*nn_node_ptr.as_ptr()).val)
+                })
+            }
+        }
+
+        pub fn back(&self) -> Option<&T> {
+            unsafe {
+                self.back.map(|nn_node_ptr|{
+                    &((*nn_node_ptr.as_ptr()).val)
+                })
+            }
+        }
+
+        pub fn front_mut(&self) -> Option<&mut T> {
+            unsafe {
+                self.front.map(|nn_node_ptr|{
+                    &mut ((*nn_node_ptr.as_ptr()).val)
+                })
+            }
+        }
+
+        pub fn back_mut(&self) -> Option<&mut T> {
+            unsafe {
+                    self.back.map(|nn_node_ptr|{
+                        &mut ((*nn_node_ptr.as_ptr()).val)
+                    })
+                }
+        }
+
+        pub fn iter(&self) -> Iter<T> {
+            Iter { next: self.front }
+        }
+
+        pub fn into_iter(self) -> IntoIter<T> {
+            IntoIter { next: self }
+        }
+        
+        pub fn iter_mut(&mut self) -> IterMut<T> {
+            IterMut { next: self.front }
+        }
     }
+
+    impl<T> Drop for List<T> {
+        fn drop(&mut self) {
+            while let Some(_) = self.front {
+                self.pop_front();
+            }
+        } 
+    } 
+
+    pub struct Iter<T> { next: Link<T> }
+    pub struct IterMut<T> { next: Link<T> }
+    pub struct IntoIter<T> { next: List<T> }
 }
 
+
 #[cfg(test)]
-pub mod tests {
+mod test {
     use crate::ll_deque_final::ll_deque_final::*;
-        
-    #[test] 
-    pub fn basics() {
-        let mut list = List::<isize>::new();
-        
-        debug_assert!(list.pop_front() == None);
 
-        list.push_front(1);
-        list.push_front(2);
-        list.push_front(3);
-        
-        debug_assert!(list.len == 3); 
+    #[test]
+    fn test_basic_front() {
+        let mut list = List::new();
 
-        debug_assert!(list.pop_front() == Some(3));
-        debug_assert!(list.len == 2); 
-        debug_assert!(list.pop_front() == Some(2));
-        debug_assert!(list.pop_front() == Some(1));
+        // Try to break an empty list
+        assert_eq!(list.len(), 0);
+        assert_eq!(list.pop_front(), None);
+        assert_eq!(list.len(), 0);
 
-        debug_assert!(list.len == 0); 
+        // Try to break a one item list
+        list.push_front(10);
+        assert_eq!(list.len(), 1);
+        assert_eq!(list.pop_front(), Some(10));
+        assert_eq!(list.len(), 0);
+        assert_eq!(list.pop_front(), None);
+        assert_eq!(list.len(), 0);
 
-        debug_assert!(list.pop_front() == None);
+        // Mess around
+        list.push_front(10);
+        assert_eq!(list.len(), 1);
+        list.push_front(20);
+        assert_eq!(list.len(), 2);
+        list.push_front(30);
+        assert_eq!(list.len(), 3);
+        assert_eq!(list.pop_front(), Some(30));
+        assert_eq!(list.len(), 2);
+        list.push_front(40);
+        assert_eq!(list.len(), 3);
+        assert_eq!(list.pop_front(), Some(40));
+        assert_eq!(list.len(), 2);
+        assert_eq!(list.pop_front(), Some(20));
+        assert_eq!(list.len(), 1);
+        assert_eq!(list.pop_front(), Some(10));
+        assert_eq!(list.len(), 0);
+        assert_eq!(list.pop_front(), None);
+        assert_eq!(list.len(), 0);
+        assert_eq!(list.pop_front(), None);
+        assert_eq!(list.len(), 0);
     }
 }
 
