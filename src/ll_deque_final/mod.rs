@@ -132,8 +132,15 @@ pub mod ll_deque_final {
     pub struct Iter<T> { next: Link<T> }
     pub struct IterMut<T> { next: Link<T> }
     pub struct IntoIter<T> { next: List<T> }
-}
+    
+    impl<T> Iterator for IntoIter<T> {
+        type Item = T;
 
+        fn next(&mut self) -> Option<Self::Item> { 
+            self.next.pop_front() 
+        }
+    } 
+}
 
 #[cfg(test)]
 mod test {
@@ -179,4 +186,3 @@ mod test {
         assert_eq!(list.len(), 0);
     }
 }
-
