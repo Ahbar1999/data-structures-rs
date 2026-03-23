@@ -55,8 +55,14 @@ pub mod ll_deque_final {
                 self.len += 1;
             }
         }
+    
+
+        pub fn pop_back(&mut self) -> Option<T> {
+            unimplemented!();
+        }
 
         pub fn pop_front(&mut self) -> Option<T> {
+            /*
             unsafe {
                 self.front.take().map(|old_head| {
                     if let Some(new_head) = (*old_head.as_ptr()).next {
@@ -72,6 +78,28 @@ pub mod ll_deque_final {
                     self.len -= 1;
                     // std::ptr::read() copies value regardless of wether T is copy
                     old_head.read().val
+                })
+            }
+            */
+            unsafe {
+                self.front.map(|node| {
+                    // this is a common pattern to brind the object back into existence sort of
+                    // to facilitate moves(drops, transfer etc.)
+                    let boxed_node = Box::from_raw(node.as_ptr());
+                    let result = boxed_node.val;    // a move occurs here
+
+                    self.front = boxed_node.next;
+                    if let Some(new_front) = self.front {
+                        (*new_front.as_ptr()).prev = None;
+                    } else {
+                        // list emptied
+                        self.back = None;
+                    }
+                
+                    self.len -= 1;
+                    result
+
+                    // boxed_node(uninitialized) gets dropped here 
                 })
             }
         }
@@ -109,7 +137,7 @@ pub mod ll_deque_final {
         }
 
         pub fn iter(&self) -> Iter<T> {
-            Iter { next: self.front }
+            Iter { next: &self.front }
         }
 
         pub fn into_iter(self) -> IntoIter<T> {
@@ -117,7 +145,7 @@ pub mod ll_deque_final {
         }
         
         pub fn iter_mut(&mut self) -> IterMut<T> {
-            IterMut { next: self.front }
+            IterMut { next: &mut self.front }
         }
     }
 
@@ -129,8 +157,8 @@ pub mod ll_deque_final {
         } 
     } 
 
-    pub struct Iter<T> { next: Link<T> }
-    pub struct IterMut<T> { next: Link<T> }
+    pub struct Iter<'a, T> { next: &'a Link<T> }
+    pub struct IterMut<'a, T> { next: &'a mut Link<T> }
     pub struct IntoIter<T> { next: List<T> }
     
     impl<T> Iterator for IntoIter<T> {
@@ -140,6 +168,30 @@ pub mod ll_deque_final {
             self.next.pop_front() 
         }
     } 
+
+    impl<'a, T> Iterator for IterMut<'a, T> {
+        type Item = &'a mut T;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            unsafe {
+                self.next.as_ref().map(|node_ptr| {
+                    &mut (*node_ptr.as_ptr()).val 
+                })
+            }
+        }
+    }
+
+    impl<'a, T> Iterator for Iter<'a, T> {
+        type Item = &'a T;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            unsafe {
+                self.next.as_ref().map(|node_ptr| {
+                    & (*node_ptr.as_ptr()).val 
+                })
+            }
+        }
+    }
 }
 
 #[cfg(test)]
