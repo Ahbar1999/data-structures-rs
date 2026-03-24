@@ -58,7 +58,22 @@ pub mod ll_deque_final {
     
 
         pub fn pop_back(&mut self) -> Option<T> {
-            unimplemented!();
+            unsafe {
+                self.back.map(|tail_ptr| {
+                    let tail_boxed = Box::from_raw(tail_ptr.as_ptr());
+
+                    if let Some(next_tail) = tail_boxed.prev {
+                        (*next_tail.as_ptr()).next = None; 
+                        self.back = Some(next_tail);
+                    } else {
+                        self.front = None;  // deinit head
+                    }
+
+                    self.len -= 1;
+
+                    tail_boxed.val
+                })
+            }
         }
 
         pub fn pop_front(&mut self) -> Option<T> {
@@ -137,12 +152,20 @@ pub mod ll_deque_final {
         }
 
         pub fn iter(&self) -> Iter<T> {
-            Iter { next: &self.front }
+            Iter {
+                front: self.front,   // head of iterator
+                back: self.back,    // tail of iterator
+                len: self.len,      // number of elements left to iterator over; used for
+                                    // ExactIterator
+                _boo: PhantomData   // for bounding lifetimes
+            }
         }
-
+        
+        /*
         pub fn into_iter(self) -> IntoIter<T> {
             IntoIter { next: self }
         }
+        */
         
         pub fn iter_mut(&mut self) -> IterMut<T> {
             IterMut { next: &mut self.front }
@@ -157,9 +180,66 @@ pub mod ll_deque_final {
         } 
     } 
 
-    pub struct Iter<'a, T> { next: &'a Link<T> }
+    impl<'a, T> IntoIterator for &'a List<T> {
+        type IntoIter = Iter<'a, T>;    // for now return Iter impl; change it to IntoIter when
+                                        // thats available 
+        type Item= &'a T;
+
+        fn into_iter(self) -> Self::IntoIter {
+            self.iter() // this will be changed to self.into_iter()
+        }
+    }
+
+    pub struct Iter<'a, T> {
+        front: Link<T>,
+        back: Link<T>,
+        len: usize,
+        _boo: PhantomData<&'a T>
+    }
+    
+    impl<'a, T> Iterator for Iter<'a, T> {
+        type Item = &'a T;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            if self.len > 0 {
+                self.front.map(|node| unsafe {
+                    self.len -= 1;
+                    self.front = (*node.as_ptr()).next;
+                    &(*node.as_ptr()).val
+                })
+            } else {
+                None
+            }
+        }
+
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            (self.len, Some(self.len))
+        }
+    }
+    
+    impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
+        fn next_back(&mut self) -> Option<Self::Item> {
+            if self.len != 0 {
+                self.back.map(|node_ptr| unsafe {
+                    self.len -= 1;
+                    self.back = (*node_ptr.as_ptr()).prev;
+
+                    &(*node_ptr.as_ptr()).val
+                }) 
+            } else {
+                None
+            }
+        }
+    }
+
+    impl<'a, T> ExactSizeIterator for Iter<'a, T> {
+        fn len(&self) -> usize {
+            self.len
+        }
+    }
+
     pub struct IterMut<'a, T> { next: &'a mut Link<T> }
-    pub struct IntoIter<T> { next: List<T> }
+    // pub struct IntoIter<T> { next: List<T> }
     
     impl<T> Iterator for IntoIter<T> {
         type Item = T;
