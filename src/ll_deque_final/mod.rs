@@ -161,14 +161,19 @@ pub mod ll_deque_final {
             }
         }
         
-        /*
-        pub fn into_iter(self) -> IntoIter<T> {
-            IntoIter { next: self }
-        }
-        */
-        
         pub fn iter_mut(&mut self) -> IterMut<T> {
-            IterMut { next: &mut self.front }
+            IterMut { 
+                front:self.front,
+                back: self.back,
+                len: self.len,
+                _boo: PhantomData
+            }
+        }
+
+        pub fn into_iter(self) -> IntoIter<T> {
+            IntoIter {
+                list: self
+            }
         }
     }
 
@@ -180,13 +185,17 @@ pub mod ll_deque_final {
         } 
     } 
 
-    impl<'a, T> IntoIterator for &'a List<T> {
-        type IntoIter = Iter<'a, T>;    // for now return Iter impl; change it to IntoIter when
-                                        // thats available 
-        type Item= &'a T;
+    
+    // useful for using with rust's for loops
+    // instead of explicity creating IntoIter with a call to into_iter
+    // when you use your list in "for x in list", list will be implicity converted into an IntoIter
+    // object
+    impl<T> IntoIterator for List<T> {
+        type IntoIter = IntoIter<T>;    
+        type Item= T;
 
         fn into_iter(self) -> Self::IntoIter {
-            self.iter() // this will be changed to self.into_iter()
+            self.into_iter() 
         }
     }
 
@@ -196,7 +205,16 @@ pub mod ll_deque_final {
         len: usize,
         _boo: PhantomData<&'a T>
     }
-    
+    pub struct IterMut<'a, T> {
+        front: Link<T>,
+        back: Link<T>,
+        len: usize,
+        _boo: PhantomData<&'a T>
+    }
+    pub struct IntoIter<T> { 
+        list: List<T> 
+    } 
+
     impl<'a, T> Iterator for Iter<'a, T> {
         type Item = &'a T;
 
@@ -238,39 +256,72 @@ pub mod ll_deque_final {
         }
     }
 
-    pub struct IterMut<'a, T> { next: &'a mut Link<T> }
-    // pub struct IntoIter<T> { next: List<T> }
-    
-    impl<T> Iterator for IntoIter<T> {
-        type Item = T;
-
-        fn next(&mut self) -> Option<Self::Item> { 
-            self.next.pop_front() 
-        }
-    } 
-
     impl<'a, T> Iterator for IterMut<'a, T> {
         type Item = &'a mut T;
 
         fn next(&mut self) -> Option<Self::Item> {
             unsafe {
-                self.next.as_ref().map(|node_ptr| {
+                self.front.map(|node_ptr| {
+                    self.len -= 1;
+
+                    if let Some(next_node) = (*node_ptr.as_ptr()).next {
+                        self.front = Some(next_node);
+                    } else {
+                        self.back = None;
+                    }
+
                     &mut (*node_ptr.as_ptr()).val 
                 })
             }
         }
     }
 
-    impl<'a, T> Iterator for Iter<'a, T> {
-        type Item = &'a T;
-
-        fn next(&mut self) -> Option<Self::Item> {
+    impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
+        fn next_back(&mut self) -> Option<Self::Item> {
             unsafe {
-                self.next.as_ref().map(|node_ptr| {
-                    & (*node_ptr.as_ptr()).val 
+                self.back.map(|node_ptr| {
+                    self.len -= 1;
+
+                    if let Some(prev_node) = (*node_ptr.as_ptr()).next {
+                        self.back = Some(prev_node);
+                    } else {
+                        self.front = None;
+                    }
+
+                    &mut (*node_ptr.as_ptr()).val 
                 })
             }
         }
+    }
+
+    impl<'a, T> ExactSizeIterator for IterMut<'a, T> {
+        fn len(&self) -> usize {
+            self.len
+        }
+    }
+
+    impl<T> Iterator for IntoIter<T> {
+        type Item = T;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            self.list.pop_front()
+        }
+
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            (self.list.len, Some(self.list.len))
+        }
+    }
+
+    impl<T> DoubleEndedIterator for IntoIter<T> {
+        fn next_back(&mut self) -> Option<Self::Item> {
+            self.list.pop_back() 
+        }
+    }
+
+    impl<T> ExactSizeIterator for IntoIter<T> {
+        fn len(&self) -> usize {
+            self.list.len
+        } 
     }
 }
 
